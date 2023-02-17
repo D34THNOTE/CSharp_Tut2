@@ -143,11 +143,12 @@ namespace JsonConverter
 
     internal class Program
     {
-        public static HashSet<Student> ReadStudentsFromCsv()
+        public static HashSet<Student> ReadStudentsFromCsv(string csvPath)
         {
             var students = new HashSet<Student>(); // custom comparer for hashset
-            using (var reader = new StreamReader("./dane.csv"))
-            using (var logWriter = new StreamWriter("./log.txt"))
+
+            using (var reader = new StreamReader(csvPath))
+            using (var logWriter = new StreamWriter("./log.txt", true))
             {
                 string line;
                 int lineCounter = 0;
@@ -188,7 +189,7 @@ namespace JsonConverter
             return students;
         }
 
-        public static void WriteToJson(JSONStructure output)
+        public static void WriteToJson(JSONStructure output, string outputPath)
         {
             JsonSerializerSettings settings = new JsonSerializerSettings
             {
@@ -196,12 +197,41 @@ namespace JsonConverter
                 DateFormatString = "dd.MM.yyyy"
             };
             string json = JsonConvert.SerializeObject(output, settings);
-            File.WriteAllText("result.json", json);
+            File.WriteAllText(outputPath, json);
         }
 
         static void Main(string[] args)
         {
-            var students = ReadStudentsFromCsv();
+            string csvFilePath = "./dane.csv";
+            Console.WriteLine("Enter path to CSV file (press enter to use default path './dane.csv'): ");
+            Console.WriteLine("Example input: C:\\Users\\borsu\\OneDrive\\Desktop\\file.csv - note that the file name has to be specified!");
+            string csvInputPath = Console.ReadLine().Trim();
+            if (!string.IsNullOrEmpty(csvInputPath))
+            {
+                if (File.Exists(csvInputPath))
+                {
+                    csvFilePath = csvInputPath;
+                }
+                else
+                {
+                    using (var logWriter = new StreamWriter("./log.txt"))
+                    {
+                        while (!File.Exists(csvInputPath))
+                        {
+                            logWriter.WriteLine($"{DateTime.Now} Incorrect path entered");
+                            Console.WriteLine("Invalid path. Please enter a valid path to CSV file: ");
+                            csvInputPath = Console.ReadLine().Trim();
+                        }
+                        csvFilePath = csvInputPath;
+                    }
+                }
+            }
+
+            Console.Write("Enter destination path for JSON file (press enter to use default path './result.json'): ");
+            string jsonInputPath = Console.ReadLine().Trim();
+            string jsonFilePath = !string.IsNullOrEmpty(jsonInputPath) ? jsonInputPath : "./result.json";
+
+            var students = ReadStudentsFromCsv(csvFilePath);
             var activeStudies = ActiveStudiesJSONGenerator.GetActiveStudiesList(students);
             var university = new University
             {
@@ -215,7 +245,7 @@ namespace JsonConverter
             {
                 University = university
             };
-            WriteToJson(universityFormat);
+            WriteToJson(universityFormat, jsonFilePath);
         }
 
 
