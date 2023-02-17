@@ -1,11 +1,69 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 
 namespace JsonConverter
 {
+    public class JSONStructure
+    {
+        public University University { get; set; }
+        
+    }
+
+    public class University
+    {
+        public DateTime CreatedAt { get; set; }
+        public string Author { get; set; }
+        public HashSet<Student> Students { get; set; }
+        public List<ActiveStudies> ActiveStudies { get; set; }
+    }
+
+    public class ActiveStudies
+    {
+        public string Name { get; set; }
+        public int NumberOfStudents { get; set; }
+
+        public static int CalculateStudents(HashSet<Student> studentList, string studyName)
+        {
+            int totalCount = 0;
+            foreach(Student student in studentList)
+            {
+                if (student.Studies.Name == studyName) totalCount++;
+            }
+            return totalCount;
+        }
+
+        public static HashSet<string> UniqueStudies(HashSet<Student> studentSet)
+        {
+            HashSet<string> uniqueStudies = new HashSet<string>();
+            foreach(Student student in studentSet)
+            {
+                uniqueStudies.Add(student.Studies.Name);
+            }
+
+            return uniqueStudies;
+        }
+    }
+
+    public class ActiveStudiesJSONGenerator
+    {
+        public static List<ActiveStudies> GetActiveStudiesList(HashSet<Student> studentSet)
+        {
+            HashSet<string> studiesNamesSet = ActiveStudies.UniqueStudies(studentSet);
+            List<ActiveStudies> studiesList = new List<ActiveStudies>();
+
+            foreach (string studName in studiesNamesSet)
+            {
+                studiesList.Add(new ActiveStudies { Name = studName, NumberOfStudents = ActiveStudies.CalculateStudents(studentSet, studName) });
+            }
+
+            return studiesList;
+        }
+    }
+
     public class Studies : IEquatable<Studies>
     {
         [JsonProperty("name")]
@@ -81,13 +139,7 @@ namespace JsonConverter
         }
     }
 
-    public class University
-    {
-        public DateTime CreatedAt { get; set; }
-        public string Author { get; set; }
-        public HashSet<Student> Students { get; set; }
-        //public List<ActiveStudy> ActiveStudies { get; set; }
-    }
+
 
     internal class Program
     {
@@ -136,27 +188,34 @@ namespace JsonConverter
             return students;
         }
 
-        public static void WriteToJson(University university)
+        public static void WriteToJson(JSONStructure output)
         {
             JsonSerializerSettings settings = new JsonSerializerSettings
             {
-                Formatting = Formatting.Indented
+                Formatting = Formatting.Indented,
+                DateFormatString = "dd.MM.yyyy"
             };
-            string json = JsonConvert.SerializeObject(university, settings);
+            string json = JsonConvert.SerializeObject(output, settings);
             File.WriteAllText("result.json", json);
         }
-
 
         static void Main(string[] args)
         {
             var students = ReadStudentsFromCsv();
+            var activeStudies = ActiveStudiesJSONGenerator.GetActiveStudiesList(students);
             var university = new University
             {
                 Author = "Anna Voitenkova",
                 CreatedAt = DateTime.Now,
-                Students = students
+                Students = students,
+                ActiveStudies = activeStudies
             };
-            WriteToJson(university);
+
+            var universityFormat = new JSONStructure
+            {
+                University = university
+            };
+            WriteToJson(universityFormat);
         }
 
 
