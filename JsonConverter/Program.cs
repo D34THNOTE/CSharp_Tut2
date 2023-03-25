@@ -48,7 +48,7 @@ namespace JsonConverter
         }
     }
 
-    public class ActiveStudiesJSONGenerator
+    public static class ActiveStudiesJsonGenerator
     {
         public static List<ActiveStudies> GetActiveStudiesList(HashSet<Student> studentSet)
         {
@@ -105,7 +105,7 @@ namespace JsonConverter
         public string MothersName { get; set; }
         [JsonProperty("fathersName")]
         public string FathersName { get; set; }
-        [JsonProperty("studies")]
+        [JsonProperty("fieldsOfStudy")]
         public Studies Studies { get; set; }
 
         public override bool Equals(object? obj)
@@ -143,12 +143,12 @@ namespace JsonConverter
 
     internal class Program
     {
-        public static HashSet<Student> ReadStudentsFromCsv(string csvPath)
+        public static HashSet<Student> ReadStudentsFromCsv(string csvPath, string logPath)
         {
             var students = new HashSet<Student>(); // custom comparer for hashset
 
             using (var reader = new StreamReader(csvPath))
-            using (var logWriter = new StreamWriter("./log.txt", true))
+            using (var logWriter = new StreamWriter(logPath, false))
             {
                 string line;
                 int lineCounter = 0;
@@ -202,20 +202,21 @@ namespace JsonConverter
 
         public static void WriteToJson(JSONStructure output, string outputPath)
         {
+            string jsonOutputPath = outputPath + "\\university.json";
             JsonSerializerSettings settings = new JsonSerializerSettings
             {
                 Formatting = Formatting.Indented,
                 DateFormatString = "dd.MM.yyyy"
             };
             string json = JsonConvert.SerializeObject(output, settings);
-            File.WriteAllText(outputPath, json);
+            File.WriteAllText(jsonOutputPath, json);
         }
 
         static void Main(string[] args)
         {
             string csvFilePath = "./dane.csv";
             Console.WriteLine("Enter path to CSV file (press enter to use default path './dane.csv'): ");
-            Console.WriteLine("Example input: C:\\Users\\borsu\\OneDrive\\Desktop\\file.csv - note that the file name has to be specified!");
+            Console.WriteLine("Example input: C:\\Users\\borsu\\OneDrive\\Desktop\\file.csv - notice that the file name has to be specified!");
             string csvInputPath = Console.ReadLine().Trim();
             if (!string.IsNullOrEmpty(csvInputPath))
             {
@@ -232,11 +233,11 @@ namespace JsonConverter
             {
                 throw new FileNotFoundException("The default CSV file does not exist", csvFilePath);
             }
-
-            // TODO output format concatenation string!!
-            Console.WriteLine("Enter destination path for the output file (press enter to use default path './university.outputFormat'): ");
+            
+            Console.WriteLine("Enter destination path for the output file (press enter to use default path './'): ");
+            Console.WriteLine("Example input: C:\\Users\borsu\\OneDrive\\Pulpit\\New folder - notice that we do not specify file output name or format");
             string jsonInputPath = Console.ReadLine().Trim();
-            string jsonFilePath = !string.IsNullOrEmpty(jsonInputPath) ? jsonInputPath : "./university.json";
+            string jsonFilePath = !string.IsNullOrEmpty(jsonInputPath) ? jsonInputPath : "./";
             if (!Directory.Exists(Path.GetDirectoryName(jsonFilePath)))
             {
                 throw new DirectoryNotFoundException("The specified output directory does not exist");
@@ -260,8 +261,8 @@ namespace JsonConverter
                 throw new InvalidOperationException("The specified format is not supported by the application");
             }
 
-            var students = ReadStudentsFromCsv(csvFilePath);
-            var activeStudies = ActiveStudiesJSONGenerator.GetActiveStudiesList(students);
+            var students = ReadStudentsFromCsv(csvFilePath, logFilePath);
+            var activeStudies = ActiveStudiesJsonGenerator.GetActiveStudiesList(students);
             var university = new University
             {
                 Author = "Bartosz Janowski",
@@ -274,7 +275,17 @@ namespace JsonConverter
             {
                 University = university
             };
-            WriteToJson(universityFormat, jsonFilePath);
+
+            if (format == "json")
+            {
+                WriteToJson(universityFormat, jsonFilePath);
+            }
+            // here we can other "else if" statements for xml, yaml etc. when adding support for them, I put the error here just in case somehow nothing matches here
+            else
+            {
+                throw new InvalidOperationException("There was an error with output format");
+            }
+            
         }
 
 
