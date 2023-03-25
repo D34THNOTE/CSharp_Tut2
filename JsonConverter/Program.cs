@@ -155,12 +155,19 @@ namespace JsonConverter
                 while ((line = reader.ReadLine()) != null)
                 {
                     lineCounter++;
-                    string[] columns = line.Split(',', StringSplitOptions.RemoveEmptyEntries); // added StringSplitOptions to make columns.Length relevant
+                    string[] columns = line.Split(',');
 
                     if (columns.Length != 9)
                     {
-                        logWriter.WriteLine($"(Line {lineCounter}) - Rejected input: {line}");
+                        logWriter.WriteLine($"(Line {lineCounter}) - The row does not have enough columns: {line}");
                         Console.WriteLine("An incomplete line added to log.txt");
+                        continue;
+                    }
+                    
+                    if (columns.Any(string.IsNullOrWhiteSpace))
+                    {
+                        logWriter.WriteLine($"(Line {lineCounter}) - The row cannot have empty columns: {line}");
+                        Console.WriteLine("A row with empty column(s) added to log.txt");
                         continue;
                     }
 
@@ -182,8 +189,12 @@ namespace JsonConverter
                         }
 
                     };
-                    // TODO: check for duplicates(done using the implemented Equals and GetHashCode methods in Student)
-                    students.Add(student);
+                    // checking for duplicate
+                    if (!students.Add(student))
+                    {
+                        logWriter.WriteLine($"(Line {lineCounter}) - Duplicate: {line}");
+                        Console.WriteLine("A duplicate student added to log.txt");
+                    }
                 }
             }
             return students;
@@ -214,28 +225,46 @@ namespace JsonConverter
                 }
                 else
                 {
-                    using (var logWriter = new StreamWriter("./log.txt"))
-                    {
-                        while (!File.Exists(csvInputPath))
-                        {
-                            logWriter.WriteLine($"{DateTime.Now} Incorrect path entered");
-                            Console.WriteLine("Invalid path. Please enter a valid path to CSV file: ");
-                            csvInputPath = Console.ReadLine().Trim();
-                        }
-                        csvFilePath = csvInputPath;
-                    }
+                    throw new FileNotFoundException("The specified CSV file does not exist", csvInputPath);
                 }
             }
+            else if (!File.Exists(csvFilePath))
+            {
+                throw new FileNotFoundException("The default CSV file does not exist", csvFilePath);
+            }
 
-            Console.Write("Enter destination path for JSON file (press enter to use default path './result.json'): ");
+            // TODO output format concatenation string!!
+            Console.WriteLine("Enter destination path for the output file (press enter to use default path './university.outputFormat'): ");
             string jsonInputPath = Console.ReadLine().Trim();
-            string jsonFilePath = !string.IsNullOrEmpty(jsonInputPath) ? jsonInputPath : "./result.json";
+            string jsonFilePath = !string.IsNullOrEmpty(jsonInputPath) ? jsonInputPath : "./university.json";
+            if (!Directory.Exists(Path.GetDirectoryName(jsonFilePath)))
+            {
+                throw new DirectoryNotFoundException("The specified output directory does not exist");
+            }
+            
+            Console.WriteLine("Enter destination path for log.txt file (press enter to use default path './log.txt'): ");
+            string logInputPath = Console.ReadLine().Trim();
+            string logFilePath = !string.IsNullOrEmpty(logInputPath) ? logInputPath : "./log.txt";
+            if (!File.Exists(logFilePath))
+            {
+                throw new FileNotFoundException($"The specified log file does not exist", logFilePath);
+            }
+            
+            Console.WriteLine("Enter format of the output file (press enter to use default format \".json\"): ");
+            Console.WriteLine("Currently supported: json");
+            Console.WriteLine("Example input: json");
+            string formatUserInput = Console.ReadLine().Trim();
+            string format = !string.IsNullOrEmpty(formatUserInput) ? formatUserInput : "json";
+            if (format != "json")
+            {
+                throw new InvalidOperationException("The specified format is not supported by the application");
+            }
 
             var students = ReadStudentsFromCsv(csvFilePath);
             var activeStudies = ActiveStudiesJSONGenerator.GetActiveStudiesList(students);
             var university = new University
             {
-                Author = "Anna Voitenkova",
+                Author = "Bartosz Janowski",
                 CreatedAt = DateTime.Now,
                 Students = students,
                 ActiveStudies = activeStudies
